@@ -2,7 +2,7 @@
 
 Welcome to **IdeationAgent**, our unique solution for brainstorming potential business ideas, crafted specially for the AutoGPT Arena Hackathon.
 
-![Banner Image](Image URL)
+![Banner Image](https://github.com/Ideation-Agent/IdeationAgent/tree/master/autogpts/IdeationAgent/img/hackathon_banner.png)
 
 ## Overview
 
