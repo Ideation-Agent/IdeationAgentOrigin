@@ -84,9 +84,12 @@ def scrape_website(url):
 def scrape_linkedin(url):
     from selenium import webdriver
     from linkedin_scraper import Person, actions
+    from selenium.webdriver.chrome.options import Options
 
-    driver = webdriver.Chrome()
-    actions.login(driver, linkedin_email, linkedin_password) # if email and password isnt given, it'll prompt in terminal
+    options = Options()
+    options.add_argument('--headless=new')
+    driver = webdriver.Chrome(options=options)
+    actions.login(driver, linkedin_email, linkedin_password)
     person = Person(url, driver=driver)
     bio = person.about + str(person.experiences) + str(person.educations) + str(person.interests) + str(person.accomplishments)
     return bio
