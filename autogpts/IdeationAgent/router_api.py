@@ -65,6 +65,6 @@ async def generate_initial_ideas(idea_source: IdeaSource):
         ]
     )
     ideas_str_str = response["choices"][0]["message"]["content"]
-    ideas = json.loads(json.loads(ideas_str_str))
+    ideas = json.loads(ideas_str_str)
     return ideas
      
