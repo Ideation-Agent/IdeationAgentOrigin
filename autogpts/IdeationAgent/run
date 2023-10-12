@@ -14,4 +14,6 @@ if [ ! -f .env ]; then
   cp .env.example .env
   echo "Please add your api keys to the .env file."
 fi
-poetry run python -m forge
+poetry run python -m forge &
+
+poetry run uvicorn router_api:app --reload --host=0.0.0.0 --port=8010
