@@ -30,11 +30,11 @@ async def root():
 @app.post("/check_bio/")
 async def check_bio(linkedin_url: LinkedinURL):
     print(f"linkedin_url: , {linkedin_url.linkedin_url}")
-    # options = Options()
-    # options.add_argument('--headless=new')
-    driver = webdriver.Chrome()#options=options)
+    options = Options()
+    options.add_argument('--headless=new')
+    driver = webdriver.Chrome(options=options)
     actions.login(driver, linkedin_email, linkedin_password)
-    person = Person(linkedin_url, driver=driver)
+    person = Person(linkedin_url.linkedin_url, driver=driver)
     bio = person.about + str(person.experiences) + str(person.educations) + str(person.interests) + str(person.accomplishments)
     return bio
 
@@ -56,7 +56,7 @@ async def generate_initial_ideas(idea_source: IdeaSource):
                 \"ideas\": {
                     \"service_name\":  \"name of service\",
                     \"problem\": \"original and clear problem definition, not phenomenon\",
-                    \"solution\": \"- short bulleted list that conveys long-term solution\\n- each item should be direct and actionable without further planning\\n- so that user can do the work\",
+                    \"solution\": \"solution should be direct and actionable without further planning\",
                 },
             }
 
