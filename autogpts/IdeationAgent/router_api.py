@@ -1,13 +1,23 @@
+import os
+from typing import Any
+
+import openai
+import json
+import requests
+from langchain.chat_models import ChatOpenAI
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.chains.summarize import load_summarize_chain
+from langchain.agents import initialize_agent, Tool
+from langchain.prompts import MessagesPlaceholder
+from langchain.memory import ConversationSummaryBufferMemory
+from langchain.agents import AgentType
+from bs4 import BeautifulSoup
 from fastapi import FastAPI
 from pydantic import BaseModel
-import os
 from dotenv import load_dotenv
 from selenium import webdriver
 from linkedin_scraper import Person, actions
 from selenium.webdriver.chrome.options import Options
-import openai
-import json
-
 
 app = FastAPI()
 
@@ -18,10 +28,96 @@ class IdeaSource(BaseModel):
     linkedin_summary: str
     interests: str = None
 
+class DiscussionSource(BaseModel):
+    log: dict[str, Any]
+    human_input: str
+    speaker_list: list[int]
+
+class BusinessPlanSource(BaseModel):
+    log: dict[str, Any]
+
 load_dotenv('.env')
+serper_api_key = os.getenv('SERP_API_KEY')
+browserless_api_key = os.getenv('BROWSERLESS_API_KEY')
 linkedin_email = os.getenv('LINKEDIN_EMAIL')
 linkedin_password = os.getenv('LINKEDIN_PASSWORD')
 openai.api_key = os.getenv('OPENAI_API_KEY')
+
+def search(query):
+    url = "https://google.serper.dev/search"
+    payload = json.dumps({
+        "q": query
+    })
+    headers = {
+        'X-API-KEY': serper_api_key,
+        'Content-Type': 'application/json'
+    }
+    response = requests.request("POST", url, headers=headers, data=payload)
+    return response.text
+
+def scrape_website(url):
+    headers = {
+        'Cache-Control': 'no-cache',
+        'Content-Type': 'application/json',
+    }
+    data = {"url": url}
+    data_json = json.dumps(data)
+    post_url = f"https://chrome.browserless.io/content?token={browserless_api_key}"
+    response = requests.post(post_url, headers=headers, data=data_json)
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.content, "html.parser")
+        text = soup.get_text()
+        print("CONTENTTTTTT:", text)
+
+        objective = "summarize"
+
+        if len(text) > 10000:
+            output = summary(objective, text)
+            return output
+        else:
+            return text
+    else:
+        print(f"HTTP request failed with status code {response.status_code}")
+
+def summary(content, objective):
+    # The agent processes the content and generates a concise summary.
+    llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-16k-0613")
+
+    text_splitter = RecursiveCharacterTextSplitter(
+        separators=["\n\n", "\n"], chunk_size=10000, chunk_overlap=500)
+    docs = text_splitter.create_documents([content])
+    map_prompt = """
+    Write a summary of the following text for {objective}:
+    "{text}"
+    SUMMARY:
+    """
+
+    summary_chain = load_summarize_chain(
+        llm=llm,
+        chain_type='map_reduce',
+        verbose=True
+    )
+
+    output = summary_chain.run(input_documents=docs, objective=objective)
+
+    return output
+
+tools = [
+    Tool(
+        name="Search",
+        func=search,
+        description="useful for when you need to answer questions about current events, data. You should ask targeted questions"
+    ),
+    Tool(
+        name="ScrapeWebsite",
+        func=scrape_website,
+        description="Scrape content from a website"
+    )
+]
+
+llm = ChatOpenAI(temperature=0, model='gpt-3.5-turbo-16k-0613')
+memory = ConversationSummaryBufferMemory(
+    memory_key="memory", return_messages=True, llm=llm, max_token_limit=1000)
 
 @app.get("/")
 async def root():
@@ -35,8 +131,8 @@ async def check_bio(linkedin_url: LinkedinURL):
     driver = webdriver.Chrome(options=options)
     actions.login(driver, linkedin_email, linkedin_password)
     person = Person(linkedin_url.linkedin_url, driver=driver)
-    bio = person.about + str(person.experiences) + str(person.educations) + str(person.interests) + str(person.accomplishments)
-    return bio
+    summary = person.about + str(person.experiences) + str(person.educations) + str(person.interests) + str(person.accomplishments)
+    return {"profileName": person.name, "linkedin_summary": summary}
 
 @app.post("/generate_initial_ideas/")
 async def generate_initial_ideas(idea_source: IdeaSource):
@@ -56,7 +152,7 @@ async def generate_initial_ideas(idea_source: IdeaSource):
                 \"ideas\": {
                     \"service_name\":  \"name of service\",
                     \"problem\": \"original and clear problem definition, not phenomenon\",
-                    \"solution\": \"solution should be direct and actionable without further planning\",
+                    \"service_idea\": \"service idea should address the problem clearly\",
                 },
             }
 
@@ -67,4 +163,134 @@ async def generate_initial_ideas(idea_source: IdeaSource):
     ideas_str_str = response["choices"][0]["message"]["content"]
     ideas = json.loads(ideas_str_str)
     return ideas
-     
+    
+
+speaker_list = []
+@app.post("/discuss")
+async def discuss(ds: DiscussionSource):
+    print(f"log :, {ds.log}, human_input:, {ds.human_input}, speaker_list:, {ds.speaker_list}")
+
+    dialog = [{"CEO": "Ok. let's start discussion."}]
+    if len(ds.log["dialog"]) == 0:
+        speaker_list.extend([0, 1, 2, 3])
+    else:
+        dialog.extend(ds.log["dialog"])
+
+    speaker_list.extend(ds.speaker_list)
+    speaker_num = speaker_list[0]
+    del speaker_list[0]
+
+    speaker_names = {
+        0: "Pat",
+        1: "Lily",
+        2: "Steve",
+        3: "Casey",
+        4: "CEO"
+    }
+    speaker_name = speaker_names[speaker_num]
+
+    for i, log_ in enumerate(dialog):
+        if i == 0:
+            continue
+        speaker_n = int(list(log_.keys())[0])
+        message = list(log_.values())[0]
+        dialog[i] = {f"{speaker_names[speaker_n]}: {message}"}
+
+    profiles = {
+        "Pat": "You are a world-class VC who can evaluate the best startup ideas. If you hear the idea, you should criticize and play devil's advocate.",
+        "Lily": "You are a world-class VC who can evaluate the best startup ideas. If you hear the idea, you should encourage and give positive feedback.",
+        "Steve": "You are a world-class researcher who can help to build the best startup. If you hear the idea, you research the idea on the internet and give feedback based on concrete facts",
+        "Casey": "You are a seasoned chief of staff who can summarize the discussion and help the user (who is a CEO) to make a decision."
+    }
+    
+    system_message = f"""
+    Here is a world-class startup team.
+    They do their very best to generate detailed business plan.
+    There are 4 members in the team: 
+    {profiles}
+
+    The team is trying to generate detailed business plan from the abstract idea.
+    The service name is {ds.log["service_name"]}
+    The problem they are trying to solve is {ds.log["problem"]}
+    The abstract idea is {ds.log["service_idea"]}
+
+    The team has discussed the following ideas so far:
+    {dialog}
+    """
+
+    if ds.human_input != "":
+        system_message += f"CEO: {ds.human_input}\n"
+
+    user_message = f"This is turn of {speaker_name} to speak. {speaker_name}, please give your feedback to the idea. Keep it short, less than 5 sentences."
+
+    # agent_kwargs = {
+    #     "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
+    #     "system_message": system_message,
+    # }
+
+    # agent = initialize_agent(
+    #     tools,
+    #     llm,
+    #     agent=AgentType.OPENAI_FUNCTIONS,
+    #     verbose=True,
+    #     agent_kwargs=agent_kwargs,
+    #     memory=memory,
+    # )
+
+    # result = agent({"input": user_message})
+
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_message},
+        ]
+    )
+    response = {"speaker": speaker_num, 
+                "contents": response["choices"][0]["message"]["content"], 
+                "is_finished": len(speaker_list) == 0}
+
+    return response
+
+@app.post("/generate_business_plan/")
+async def generate_business_plan(bp: BusinessPlanSource):
+    system_message = f"""
+    You are a world-class startup business developer.
+    Based on the discussion, you should generate detailed business plan.
+    Here is the discussion so far:
+    {bp.log["dialog"]}
+    """
+    user_message = """
+    Please generate detailed business plan based on the discussion. 
+    Reply only in json with the following format:
+
+            {
+                \"business_plan\": {
+                    \"business_plan\":  \"name of business plan\",
+                    \"executive_summary\": \"describe executive summary\",
+                    \"problem_statement\": \"describe clear problem statement \",
+                    \"solution\": \" write solution\",
+                    \"target_market\": \"describe target market\",
+                    \"revenue_model\": \"describe revenue model\",
+                    \"GoToMarket_strategy\": \"describe GoToMarket strategy\",
+                    \"competitive_analysis\": \"describe competitive analysis\",
+                    \"operaion_plan\": \"describe operation plan\",
+                    \"conclusion\": \"describe conclusion\",
+                },
+            }
+    
+    """
+
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_message},
+        ]
+    )
+
+    response = response["choices"][0]["message"]["content"]
+    business_plan = json.loads(response)
+    
+    return business_plan
+
