@@ -166,7 +166,7 @@ async def generate_initial_ideas(idea_source: IdeaSource):
     
 
 speaker_list = []
-@app.post("/discuss")
+@app.post("/discuss/")
 async def discuss(ds: DiscussionSource):
     print(f"log :, {ds.log}, human_input:, {ds.human_input}, speaker_list:, {ds.speaker_list}")
 
