@@ -20,8 +20,17 @@ from linkedin_scraper import Person, actions
 from selenium.webdriver.chrome.options import Options
 from langchain.schema import SystemMessage
 from serpapi import GoogleSearch
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["*"],
+)
 
 class LinkedinURL(BaseModel):
     linkedin_url: str
