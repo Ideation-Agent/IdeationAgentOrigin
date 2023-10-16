@@ -12,225 +12,23 @@ from forge.sdk import (
 )
 import os
 from dotenv import load_dotenv
-from langchain import PromptTemplate
 from langchain.agents import initialize_agent, Tool
 from langchain.agents import AgentType
 from langchain.chat_models import ChatOpenAI
-from langchain.prompts import MessagesPlaceholder
+from langchain.prompts import MessagesPlaceholder, PromptTemplate
 from langchain.memory import ConversationSummaryBufferMemory
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains.summarize import load_summarize_chain
 from bs4 import BeautifulSoup
 import requests
 import json
+import openai
 from langchain.schema import SystemMessage
 
 LOG = ForgeLogger(__name__)
 
 load_dotenv('.env')
-browserless_api_key = os.getenv('BROWSERLESS_API_KEY')
-serper_api_key = os.getenv('SERP_API_KEY')
-open_ai_api = os.getenv('OPENAI_API_KEY')
-linkedin_email = os.getenv('LINKEDIN_EMAIL')
-linkedin_password = os.getenv('LINKEDIN_PASSWORD')
-
-def search(query):
-    url = "https://google.serper.dev/search"
-    payload = json.dumps({
-        "q": query
-    })
-    headers = {
-        'X-API-KEY': serper_api_key,
-        'Content-Type': 'application/json'
-    }
-    response = requests.request("POST", url, headers=headers, data=payload)
-    return response.text
-
-def scrape_website(url):
-    headers = {
-        'Cache-Control': 'no-cache',
-        'Content-Type': 'application/json',
-    }
-    data = {"url": url}
-    data_json = json.dumps(data)
-    post_url = f"https://chrome.browserless.io/content?token={browserless_api_key}"
-    response = requests.post(post_url, headers=headers, data=data_json)
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.content, "html.parser")
-        text = soup.get_text()
-        print("CONTENTTTTTT:", text)
-
-        objective = "summarize"
-
-        if len(text) > 10000:
-            output = summary(objective, text)
-            return output
-        else:
-            return text
-    else:
-        print(f"HTTP request failed with status code {response.status_code}")
-
-def scrape_linkedin(url):
-    from selenium import webdriver
-    from linkedin_scraper import Person, actions
-    from selenium.webdriver.chrome.options import Options
-
-    options = Options()
-    options.add_argument('--headless=new')
-    driver = webdriver.Chrome(options=options)
-    actions.login(driver, linkedin_email, linkedin_password)
-    person = Person(url, driver=driver)
-    bio = person.about + str(person.experiences) + str(person.educations) + str(person.interests) + str(person.accomplishments)
-    return bio
-
-
-def summary(content, objective):
-    # The agent processes the content and generates a concise summary.
-    llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-16k-0613")
-
-    text_splitter = RecursiveCharacterTextSplitter(
-        separators=["\n\n", "\n"], chunk_size=10000, chunk_overlap=500)
-    docs = text_splitter.create_documents([content])
-    map_prompt = """
-    Write a summary of the following text for {objective}:
-    "{text}"
-    SUMMARY:
-    """
-    map_prompt_template = PromptTemplate(
-        template=map_prompt, input_variables=["text", "objective"])
-
-    summary_chain = load_summarize_chain(
-        llm=llm,
-        chain_type='map_reduce',
-        map_prompt=map_prompt_template,
-        combine_prompt=map_prompt_template,
-        verbose=True
-    )
-
-    output = summary_chain.run(input_documents=docs, objective=objective)
-
-    return output
-
-tools = [
-    Tool(
-        name="Search",
-        func=search,
-        description="useful for when you need to answer questions about current events, data. You should ask targeted questions"
-    ),
-    Tool(
-        name="ScrapeWebsite",
-        func=scrape_website,
-        description="Scrape content from a website"
-    ),
-    Tool(
-        name="ScrapeLinkedin",
-        func=scrape_linkedin,
-        description="Scrape content from a linkedin profile"
-    ),
-]
-
-system_message_dict = {
-    "researcher": SystemMessage(
-    content="""
-            You are a world class researcher, who can do detailed research on any topic and produce facts based results; 
-            you do not make things up, you will try as hard as possible to gather facts & data to back up the research.
-            If linkedin profile is provided, scrape linkedin and use the information (experience, education, interest, etc) to support the research.
-            If the users ask to suggest 7 startup ideas, you will try to generate the best startup ideas based on the research.
-            """),
-    "devil's_advocate": SystemMessage(
-    content="""
-            You are a devil's advocate, you will try to find the flaws in the research and will try to disprove the research.
-            Disprove every ideas that the researcher comes up with.
-            """),
-    "angel's_advocate": SystemMessage(
-    content="""
-            You are an angel's advocate, you will try to find the good in the research and will try to prove the research.
-            Prove every ideas that the devil's advocate comes up with.
-            """),
-    "CoS": SystemMessage(
-    content="""
-            You are a highly competent and respectible Chief of Staff, from the above discussion, pick the best startup idea with its number and explain why it is better than the others.
-
-            Reply only in json with the following format:
-
-            I will recommend the idea number {number} because {reason}.
-            In terms of {metric}, it is {better/worse} than the other ideas because {reason}.
-
-            """),
-}
-
-llm = ChatOpenAI(temperature=0, model='gpt-3.5-turbo-16k-0613')
-memory = ConversationSummaryBufferMemory(
-    memory_key="memory", return_messages=True, llm=llm, max_token_limit=1000)
-
-research_agent_kwargs = {
-    "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
-    "system_message": system_message_dict["researcher"],
-}
-research_agent = initialize_agent(
-    tools,
-    llm,
-    agent=AgentType.OPENAI_FUNCTIONS,
-    verbose=True,
-    agent_kwargs=research_agent_kwargs,
-    memory=memory,
-)
-
-devil_agent_kwargs = {
-    "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
-    "system_message": system_message_dict["devil's_advocate"],
-}
-devil_agent = initialize_agent(
-    tools,
-    llm,
-    agent=AgentType.OPENAI_FUNCTIONS,
-    verbose=True,
-    agent_kwargs=devil_agent_kwargs,
-    memory=memory,
-)
-
-angel_agent_kwargs = {
-    "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
-    "system_message": system_message_dict["angel's_advocate"],
-}
-angel_agent = initialize_agent(
-    tools,
-    llm,
-    agent=AgentType.OPENAI_FUNCTIONS,
-    verbose=True,
-    agent_kwargs=angel_agent_kwargs,
-    memory=memory,
-)
-
-cos_agent_kwargs = {
-    "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
-    "system_message": system_message_dict["CoS"],
-}
-cos_agent = initialize_agent(
-    tools,
-    llm,
-    agent=AgentType.OPENAI_FUNCTIONS,
-    verbose=True,
-    agent_kwargs=cos_agent_kwargs,
-    memory=memory,
-)
-
-def discussion(query):
-    output_string = ""
-    result = research_agent({"input": query})
-    output_string += f"\n\n\n - RESEARCH AGENT:{result['output']}"
-
-    result = devil_agent({"input": result['output']})
-    output_string += f"\n\n\n - DEVIL'S ADVOCATE:{result['output']}"
-
-    result = angel_agent({"input": result['output']})
-    output_string += f"\n\n\n - ANGEL'S ADVOCATE:{result['output']}"
-
-    result = cos_agent({"input": result['output']})
-    output_string += f"\n\n\n - CHEIF OF STAFF:{result['output']}"
-
-    return output_string
-
+openai.api_key = os.getenv('OPENAI_API_KEY')
 
 class ForgeAgent(Agent):
     """
@@ -334,7 +132,9 @@ class ForgeAgent(Agent):
         multiple steps. Returning a request to continue in the step output, the user can then decide
         if they want the agent to continue or not.
         """
+        task = await self.db.get_task(task_id)
         steps = await self.db.list_steps(task_id=task_id)
+        step_request.input = task.input
 
         if len(steps[0]) == 0: # if no steps have been created yet, discuss the first idea
             step = await self.db.create_step(
@@ -350,14 +150,19 @@ class ForgeAgent(Agent):
                 )
 
             LOG.info(message)
-            discussion_log = discussion(step_request.input)
-            step.output = discussion_log
+
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": step_request.input},
+                    {"role": "user", "content": "You should pick some members of the team to speak. Pick members and ask them to elaborate on the idea or give feedback."},
+                ]
+            )
+            ideas_str = response["choices"][0]["message"]["content"]
+            ideas = json.loads(ideas_str)
 
         else:
-            if step_request.input == "continue":
-                raise NotImplementedError("Not implemented yet.")
-            else:
-                raise NotImplementedError("Not implemented yet.")
-            
-        
+            raise NotImplementedError
+
+        step.output = ideas
         return step

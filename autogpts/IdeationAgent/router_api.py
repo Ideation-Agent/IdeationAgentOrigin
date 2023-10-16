@@ -171,15 +171,6 @@ async def discuss(ds: DiscussionSource):
     print(f"log :, {ds.log}, human_input:, {ds.human_input}, speaker_list:, {ds.speaker_list}")
 
     dialog = [{"CEO": "Ok. let's start discussion."}]
-    if len(ds.log["dialog"]) == 0:
-        speaker_list.extend([0, 1, 2, 3])
-    else:
-        dialog.extend(ds.log["dialog"])
-
-    speaker_list.extend(ds.speaker_list)
-    speaker_num = speaker_list[0]
-    del speaker_list[0]
-
     speaker_names = {
         0: "Pat",
         1: "Lily",
@@ -187,6 +178,54 @@ async def discuss(ds: DiscussionSource):
         3: "Casey",
         4: "CEO"
     }
+
+    if len(ds.log["dialog"]) == 0:
+        speaker_list.extend([0, 1, 2, 3])
+    else:
+        dialog.extend(ds.log["dialog"])
+
+    speaker_list.extend(ds.speaker_list)
+    if len(speaker_list) != 0:
+        speaker_num = int(speaker_list[0])
+        del speaker_list[0]
+    else: # Start AutoGPT
+        url = "http://localhost:8000/ap/v1/agent/tasks/"
+        input_message = """
+        You are a world-class CEO of a startup.
+        You should run the discussion in a fact based manner to generate realistic detailed business plan.
+
+        Reply only in one json with the following format:
+
+        {
+            \"member number (repliy only in integer from 0 to 3)\": \"give feedback to the idea or ask to elaborate on the idea\"
+        }
+
+        Here is the discussion so far:
+
+        """
+        input_message += str(dialog)
+        input_message += f"Here is the comment of cheif of staff: {ds.human_input}"
+        print(input_message)
+        input = json.dumps({"input": input_message, "additional_input": ""})
+        res = requests.post(url, data=input)
+        res = json.loads(res.text)
+        task_id = res["task_id"]
+        url = f"http://localhost:8000/ap/v1/agent/tasks/{task_id}/steps/"
+        input = json.dumps({"task_id": task_id, "step": {"input":input_message, "additional_input": ""}})
+        res = requests.post(url, data=input)
+        res = json.loads(res.text)
+        
+        ceo_feedback = res["output"]
+        speaker_list.extend(ceo_feedback.keys())
+        new_answer = {}
+        for k in ceo_feedback:
+            v = ceo_feedback[k]
+            new_answer[speaker_names[int(k)]] = v
+        
+        response = {"speaker": 4, "contents": str(new_answer), "is_finished": False}
+        
+        return response
+
     speaker_name = speaker_names[speaker_num]
 
     for i, log_ in enumerate(dialog):
@@ -223,6 +262,10 @@ async def discuss(ds: DiscussionSource):
 
     user_message = f"This is turn of {speaker_name} to speak. {speaker_name}, please give your feedback to the idea. Keep it short, less than 5 sentences."
 
+    # ceo_agent_kwargs = {
+    #     "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
+    #     "system_message": SystemMessage(content=step_request.input),
+    # }
     # agent_kwargs = {
     #     "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
     #     "system_message": system_message,

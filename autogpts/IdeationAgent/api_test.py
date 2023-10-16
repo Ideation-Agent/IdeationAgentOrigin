@@ -63,11 +63,14 @@ data = {
 			"service_idea" : "Develop an AI-driven platform that uses machine learning to predict potential health issues based on patient medical history, current vitals, and other relevant data, enabling proactive medical treatments.",
 			"dialog" : dialog
 		},
-		"human_input": "ok. continue discussion.",
-		"speaker_list": [2, 1],
+		# "human_input": "ok. continue discussion.",
+		# "speaker_list": [2, 1], # Test running human order
+		"human_input": "",
+		"speaker_list": [], # Test running autogpt
 	}
 res = requests.post(url, data=json.dumps(data))
 message = json.loads(res.text)
+
 dialog.append({f"{message['speaker']}": f"{message['contents']}"})
 print(dialog)
 
