@@ -18,6 +18,8 @@ from dotenv import load_dotenv
 from selenium import webdriver
 from linkedin_scraper import Person, actions
 from selenium.webdriver.chrome.options import Options
+from langchain.schema import SystemMessage
+from serpapi import GoogleSearch
 
 app = FastAPI()
 
@@ -44,16 +46,16 @@ linkedin_password = os.getenv('LINKEDIN_PASSWORD')
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
 def search(query):
-    url = "https://google.serper.dev/search"
-    payload = json.dumps({
-        "q": query
-    })
-    headers = {
-        'X-API-KEY': serper_api_key,
-        'Content-Type': 'application/json'
+    params = {
+    "engine": "google",
+    "q": query,
+    "api_key": serper_api_key
     }
-    response = requests.request("POST", url, headers=headers, data=payload)
-    return response.text
+
+    search = GoogleSearch(params)
+    results = search.get_dict()
+    organic_results = results["organic_results"]
+    return str(organic_results)
 
 def scrape_website(url):
     headers = {
@@ -262,35 +264,24 @@ async def discuss(ds: DiscussionSource):
 
     user_message = f"This is turn of {speaker_name} to speak. {speaker_name}, please give your feedback to the idea. Keep it short, less than 5 sentences."
 
-    # ceo_agent_kwargs = {
-    #     "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
-    #     "system_message": SystemMessage(content=step_request.input),
-    # }
-    # agent_kwargs = {
-    #     "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
-    #     "system_message": system_message,
-    # }
+    agent_kwargs = {
+        "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
+        "system_message": SystemMessage(content=system_message),
+    }
 
-    # agent = initialize_agent(
-    #     tools,
-    #     llm,
-    #     agent=AgentType.OPENAI_FUNCTIONS,
-    #     verbose=True,
-    #     agent_kwargs=agent_kwargs,
-    #     memory=memory,
-    # )
-
-    # result = agent({"input": user_message})
-
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": user_message},
-        ]
+    agent = initialize_agent(
+        tools,
+        llm,
+        agent=AgentType.OPENAI_FUNCTIONS,
+        verbose=True,
+        agent_kwargs=agent_kwargs,
+        memory=memory,
     )
+
+    result = agent({"input": user_message})
+    
     response = {"speaker": speaker_num, 
-                "contents": response["choices"][0]["message"]["content"], 
+                "contents": result["output"],
                 "is_finished": len(speaker_list) == 0}
 
     return response
