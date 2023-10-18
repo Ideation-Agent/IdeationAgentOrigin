@@ -119,11 +119,11 @@ tools = [
         func=search,
         description="useful for when you need to answer questions about current events, data. You should ask targeted questions"
     ),
-    Tool(
-        name="ScrapeWebsite",
-        func=scrape_website,
-        description="Scrape content from a website"
-    )
+    # Tool(
+    #     name="ScrapeWebsite",
+    #     func=scrape_website,
+    #     description="Scrape content from a website"
+    # )
 ]
 
 llm = ChatOpenAI(temperature=0, model='gpt-3.5-turbo-16k-0613')
