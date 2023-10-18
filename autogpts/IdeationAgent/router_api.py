@@ -143,44 +143,49 @@ async def check_bio(linkedin_url: LinkedinURL):
     actions.login(driver, linkedin_email, linkedin_password)
     person = Person(linkedin_url.linkedin_url, driver=driver)
     summary = person.about + str(person.experiences) + str(person.educations) + str(person.interests) + str(person.accomplishments)
-    return {"profileName": person.name, "linkedin_summary": summary}
+    return {"profile_name": person.name, "linkedin_summary": summary}
 
 @app.post("/generate_initial_ideas/")
 async def generate_initial_ideas(idea_source: IdeaSource):
     user_input = f"linkedin_summary : , {idea_source.linkedin_summary}, interests : , {idea_source.interests}"
     print(user_input)
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", 
-             "content": """
-             You are a world class business idea generator, who can generate the best startup ideas. 
-             If the user provide linkedin information and interests, you will try to generate the 5 best startup ideas.
-             You should generate service name, define clear problem and solution for each idea.
-             Reply only in json with the following format:
+    while True:
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", 
+                    "content": """
+                    You are a world class business idea generator, who can generate the best startup ideas. 
+                    If the user provide linkedin information and interests, you will try to generate the 5 best startup ideas.
+                    You should generate service name, define clear problem and solution for each idea.
+                    Reply only in json with the following format:
 
-            {
-                \"ideas\": {
-                    \"service_name\":  \"name of service\",
-                    \"problem\": \"original and clear problem definition, not phenomenon\",
-                    \"service_idea\": \"service idea should address the problem clearly\",
-                },
-            }
+                    {
+                        \"ideas\": {
+                            \"service_name\":  \"name of service\",
+                            \"problem\": \"original and clear problem definition, not phenomenon\",
+                            \"service_idea\": \"service idea should address the problem clearly\",
+                        },
+                    }
 
-             """},
-            {"role": "user", "content": user_input},
-        ]
-    )
-    ideas_str_str = response["choices"][0]["message"]["content"]
-    ideas = json.loads(ideas_str_str)
+                    """},
+                    {"role": "user", "content": user_input},
+                ]
+            )
+            ideas_str_str = response["choices"][0]["message"]["content"]
+            ideas = json.loads(ideas_str_str)
+            break
+        except:
+            continue
     return ideas
-    
 
 speaker_list = []
 @app.post("/discuss/")
 async def discuss(ds: DiscussionSource):
     print(f"log :, {ds.log}, human_input:, {ds.human_input}, speaker_list:, {ds.speaker_list}")
 
+    global speaker_list
     dialog = [{"CEO": "Ok. let's start discussion."}]
     speaker_names = {
         0: "Pat",
@@ -191,6 +196,7 @@ async def discuss(ds: DiscussionSource):
     }
 
     if len(ds.log["dialog"]) == 0:
+        speaker_list = []
         speaker_list.extend([0, 1, 2, 3])
     else:
         dialog.extend(ds.log["dialog"])
@@ -223,17 +229,21 @@ async def discuss(ds: DiscussionSource):
         task_id = res["task_id"]
         url = f"http://localhost:8000/ap/v1/agent/tasks/{task_id}/steps/"
         input = json.dumps({"task_id": task_id, "step": {"input":input_message, "additional_input": ""}})
-        res = requests.post(url, data=input)
-        res = json.loads(res.text)
-        
-        ceo_feedback = res["output"]
-        speaker_list.extend(ceo_feedback.keys())
-        new_answer = {}
-        for k in ceo_feedback:
-            v = ceo_feedback[k]
-            new_answer[speaker_names[int(k)]] = v
-        
-        response = {"speaker": 4, "contents": str(new_answer), "is_finished": False}
+        while True:
+            try:
+                res = requests.post(url, data=input)
+                res = json.loads(res.text)
+                ceo_feedback = res["output"]
+                speaker_list.extend(ceo_feedback.keys())
+                new_answer = {}
+                for k in ceo_feedback:
+                    v = ceo_feedback[k]
+                    new_answer[speaker_names[int(k)]] = v
+                
+                response = {"speaker": 4, "contents": str(new_answer), "is_finished": False}
+                break
+            except:
+                continue
         
         return response
 
@@ -288,7 +298,7 @@ async def discuss(ds: DiscussionSource):
     )
 
     result = agent({"input": user_message})
-    
+
     response = {"speaker": speaker_num, 
                 "contents": result["output"],
                 "is_finished": len(speaker_list) == 0}
@@ -307,33 +317,37 @@ async def generate_business_plan(bp: BusinessPlanSource):
     Please generate detailed business plan based on the discussion. 
     Reply only in json with the following format:
 
-            {
-                \"business_plan\": {
-                    \"business_plan\":  \"name of business plan\",
-                    \"executive_summary\": \"describe executive summary\",
-                    \"problem_statement\": \"describe clear problem statement \",
-                    \"solution\": \" write solution\",
-                    \"target_market\": \"describe target market\",
-                    \"revenue_model\": \"describe revenue model\",
-                    \"GoToMarket_strategy\": \"describe GoToMarket strategy\",
-                    \"competitive_analysis\": \"describe competitive analysis\",
-                    \"operaion_plan\": \"describe operation plan\",
-                    \"conclusion\": \"describe conclusion\",
-                },
-            }
+    {
+        \"business_plan\": {
+            \"business_plan\":  \"name of business plan\",
+            \"executive_summary\": \"describe executive summary\",
+            \"problem_statement\": \"describe clear problem statement \",
+            \"solution\": \" write solution\",
+            \"target_market\": \"describe target market\",
+            \"revenue_model\": \"describe revenue model\",
+            \"GoToMarket_strategy\": \"describe GoToMarket strategy\",
+            \"competitive_analysis\": \"describe competitive analysis\",
+            \"operaion_plan\": \"describe operation plan\",
+            \"conclusion\": \"describe conclusion\",
+        },
+    }
     
     """
+    while True: 
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": user_message},
+            ]
+        )
 
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": user_message},
-        ]
-    )
-
-    response = response["choices"][0]["message"]["content"]
-    business_plan = json.loads(response)
+        response = response["choices"][0]["message"]["content"]
+        try: 
+            business_plan = json.loads(response)
+            break
+        except: 
+            continue
     
     return business_plan
 
