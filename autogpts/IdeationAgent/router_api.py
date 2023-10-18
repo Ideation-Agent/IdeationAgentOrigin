@@ -260,7 +260,7 @@ async def discuss(ds: DiscussionSource):
         "Pat": "You are a world-class VC who can evaluate the best startup ideas. If you hear the idea, you should criticize and play devil's advocate.",
         "Lily": "You are a world-class VC who can evaluate the best startup ideas. If you hear the idea, you should encourage and give positive feedback.",
         "Steve": "You are a world-class researcher who can help to build the best startup. If you hear the idea, you research the idea on the internet and give feedback based on concrete facts",
-        "Casey": "You are a seasoned chief of staff who can summarize the discussion and help the user (who is a CEO) to make a decision."
+        "Casey": "You are a honest potential customer who can give feedback to the idea. If you hear the idea, you should give honest feedback.",
     }
     
     system_message = f"""
