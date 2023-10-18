@@ -8,7 +8,6 @@ import time
 
 # # 1. check_bio
 # url = "http://localhost:8010/check_bio/"
-# url = "http://c16d-182-230-164-18.ngrok.io/check_bio/"
 # data = {"linkedin_url": "https://www.linkedin.com/in/jongwon-park-247692147/"}
 # start_time = time.time()
 # res = requests.post(url, data=json.dumps(data), timeout=600)
@@ -24,8 +23,7 @@ import time
 
 
 # 3. discuss to business plan
-# url = "http://localhost:8010/discuss/"
-url = "http://c16d-182-230-164-18.ngrok.io/discuss/"
+url = "http://localhost:8010/discuss/"
 data = {
     "log": {
         "service_name" : "MedBot Analytics",
