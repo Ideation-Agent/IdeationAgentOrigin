@@ -162,8 +162,8 @@ CURRENT_BULLETIN.md
 agbenchmark/reports/
 
 # Nodejs
-package-lock.json
-package.json
+# package-lock.json
+# package.json
 
 # Allow for locally private items
 # private

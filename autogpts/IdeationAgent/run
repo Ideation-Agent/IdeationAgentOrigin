@@ -1,6 +1,7 @@
 #!/bin/bash
 
 kill $(lsof -t -i :8000)
+kill $(lsof -t -i :8010)
  ENV_PATH=$(poetry env info --path)
  if [ -d "$ENV_PATH" ]; then
      rm -rf $ENV_PATH
@@ -14,6 +15,6 @@ if [ ! -f .env ]; then
   cp .env.example .env
   echo "Please add your api keys to the .env file."
 fi
-poetry run python -m forge & poetry run uvicorn router_api:app --reload --host=0.0.0.0 --port=8010
+poetry run uvicorn router_api:app --reload --host=0.0.0.0 --port=8010
 
 

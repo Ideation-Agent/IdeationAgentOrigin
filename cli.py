@@ -284,6 +284,26 @@ def start(agent_name):
                 fg="red",
             )
         )
+    front_dir = os.path.join(script_dir, "frontend")
+    front_run_command = os.path.join(front_dir, "run")
+    if os.path.exists(front_dir) and os.path.isfile(front_run_command):
+        os.chdir(front_dir)
+        subprocess.Popen(["./run"], cwd=front_dir)
+        click.echo(f"Frontend started")
+    elif not os.path.exists(front_dir):
+        click.echo(
+            click.style(
+                f"😞 Frontend does not exist. Please create the agent first.",
+                fg="red",
+            )
+        )
+    else:
+        click.echo(
+            click.style(
+                f"😞 Run command does not exist in Frontend directory.",
+                fg="red",
+            )
+        )
 
 
 @agent.command()
