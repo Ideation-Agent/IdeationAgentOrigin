@@ -4,7 +4,8 @@ const apiClient = axios.create({
     headers: {
         "Content-Type": 'application/json'
     },
-    baseURL: 'http://localhost:8010'
+    // baseURL: process.env.REACT_APP_SERVER_HOST
+    baseURL: 'https://'
 });
 
 const { get, post, put, patch, delete: destroy } = apiClient;

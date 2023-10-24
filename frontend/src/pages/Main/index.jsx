@@ -13,7 +13,7 @@ import TeamPage from "./TeamPage";
 import IntroPage from "./IntroPage";
 import PlanPage from "./PlanPage";
 import PageTitle from "components/global/PageTitle";
-import { ReactComponent as RightArrow } from "asssets/icons/ic-right_arrow.svg";
+import { ReactComponent as RightArrow } from "assets/icons/ic-right_arrow.svg";
 import ServerProvider from "networks/ServerProvider";
 
 const RightArrowIcon = styled(RightArrow)`
@@ -80,12 +80,12 @@ function MainPage() {
     if (result) {
       if (address === "") return;
 
-      const img = result.profileImage;
-      const username = result.profileName;
+      // const img = result.profileImage;
+      const username = result.profile_name;
       const linked = result.linkedin_summary;
 
       setUserData({
-        img,
+        // img,
         username,
         linked,
       });
@@ -153,6 +153,7 @@ function MainPage() {
                     selectedIndex={selectedIndex}
                     setSelectedIndex={setSelectedIndex}
                     brainPageIndex={brainPageIndex}
+                    parentIndex={pageIndex}
                     reGen={generateIdeas}
                     setConclusionData={setConclusionData}
                   />

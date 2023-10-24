@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { COLORS } from "styles/global/globalColors";
-import { ReactComponent as EnterArrow } from "asssets/icons/ic-enter_arrow.svg";
+import { ReactComponent as EnterArrow } from "assets/icons/ic-enter_arrow.svg";
 import { css } from "@emotion/react";
 import Row from "components/utils/Row";
 import Block from "components/utils/Block";

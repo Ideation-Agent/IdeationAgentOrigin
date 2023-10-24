@@ -6,4 +6,7 @@ export const Profile = styled.div`
   height: 150px;
   border: 1px solid ${({ color }) => color};
   background: ${COLORS.white};
+  display: flex;
+  justify-content: center;
+  align-items: center;
 `;

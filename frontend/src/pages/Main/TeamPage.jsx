@@ -11,6 +11,10 @@ import Column from "components/utils/Column";
 import { LayerAlign } from "components/utils/WidgetUtils";
 import { COLORS } from "styles/global/globalColors";
 import GlobalFont from "styles/global/globalFonts";
+import { ReactComponent as Pat } from "assets/icons/pat.svg";
+import { ReactComponent as Lily } from "assets/icons/lily.svg";
+import { ReactComponent as Steve } from "assets/icons/steve.svg";
+import { ReactComponent as Casey } from "assets/icons/casey.svg";
 
 const ProfileInfo = styled.div`
   ${GlobalFont({
@@ -33,7 +37,9 @@ function TeamPage() {
       <AllFullRow main={LayerAlign.center}>
         <Block w={21} />
         <Column>
-          <Profile color={COLORS.yellow_1} />
+          <Profile color={COLORS.yellow_1}>
+            <Pat />
+          </Profile>
           <ProfileText>Pat</ProfileText>
           <ProfileInfo>
             A seasoned VC who's always on the lookout for the next big idea and
@@ -43,7 +49,9 @@ function TeamPage() {
 
         <Block w={108} />
         <Column>
-          <Profile color={COLORS.blue_1} />
+          <Profile color={COLORS.blue_1}>
+            <Lily />
+          </Profile>
           <ProfileText>Lily</ProfileText>
           <ProfileInfo>
             A strategic VC with a keen eye for innovative solutions and
@@ -52,7 +60,9 @@ function TeamPage() {
         </Column>
         <Block w={108} />
         <Column>
-          <Profile color={COLORS.red_1} />
+          <Profile color={COLORS.red_1}>
+            <Steve />
+          </Profile>
           <ProfileText>Steve</ProfileText>
           <ProfileInfo>
             A tech-savvy genius with deep insights into the feasibility and
@@ -61,7 +71,9 @@ function TeamPage() {
         </Column>
         <Block w={108} />
         <Column>
-          <Profile color={COLORS.purple_1} />
+          <Profile color={COLORS.purple_1}>
+            <Casey />
+          </Profile>
           <ProfileText>Casey</ProfileText>
           <ProfileInfo>
             A power consumer always trying new products, offering invaluable
