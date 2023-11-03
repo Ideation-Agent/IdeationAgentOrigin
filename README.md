@@ -42,9 +42,14 @@ Together, these AI personas ensure a comprehensive discussion, covering all angl
 - LINKEDIN_PASSWORD= your linkedin PW
 
 
-4. Start the program (TBD):
+4. Start the backend and frontend in each terminal:
     ```bash
-    ./run agent IdeationAgent 
+    cd autogpts/IdeationAgent
+    poetry run uvicorn router_api:app --reload --host=0.0.0.0 --port=8010 & poetry run python -m forge
+    ```
+    ```bash
+    cd frontend
+    ./run
     ```
 
 5. Watch the magic happen!
